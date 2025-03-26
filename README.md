@@ -43,7 +43,6 @@ To run the project, you can use the following commands:
   pip install -r requirements.txt
   ```
 
-Feel free to modify the project according to your needs. Happy coding!
-```
-
-This file provides an overview of the project, its structure, setup instructions, and usage instructions. Feel free to modify it according to your project's specific requirements.
+- Run in 2 terminals
+  - cd src && uvicorn app:app --reload
+  - python main.py [name] [character_sound] [amount_of_tries]
