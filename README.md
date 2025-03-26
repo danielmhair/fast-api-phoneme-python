@@ -1,11 +1,11 @@
-# My Python Project
+# Fast API Phoneme Python
 
-This is a Python project that contains the main code and unit tests.
+Phoneme AI trained on children voices using FastAPI in Python
 
 ## Project Structure
 
 ```
-my-python-project
+fast-api-phoneme-python
 ├── src
 │   ├── __init__.py
 │   └── main.py
@@ -22,11 +22,11 @@ my-python-project
 
 To set up the project, follow these steps:
 
-1. Create a new directory called `my-python-project`.
-2. Inside the `my-python-project` directory, create a `src` directory.
+1. Create a new directory called `fast-api-phoneme-python`.
+2. Inside the `fast-api-phoneme-python` directory, create a `src` directory.
 3. Inside the `src` directory, create an empty file called `__init__.py`.
 4. Inside the `src` directory, create a file called `main.py` and add your main Python code.
-5. Inside the `my-python-project` directory, create a `tests` directory.
+5. Inside the `fast-api-phoneme-python` directory, create a `tests` directory.
 6. Inside the `tests` directory, create an empty file called `__init__.py`.
 7. Inside the `tests` directory, create a file called `test_main.py` and add your unit tests using the `pytest` framework.
 8. Create a file called `requirements.txt` and list the dependencies for your project.
@@ -43,12 +43,6 @@ To run the project, you can use the following commands:
   pip install -r requirements.txt
   ```
 
-- Run the unit tests:
-  ```
-  pytest
-  ```
-
-Feel free to modify the project according to your needs. Happy coding!
-```
-
-This file provides an overview of the project, its structure, setup instructions, and usage instructions. Feel free to modify it according to your project's specific requirements.
+- Run in 2 terminals
+  - cd src && uvicorn app:app --reload
+  - python main.py [name] [character_sound] [amount_of_tries]
