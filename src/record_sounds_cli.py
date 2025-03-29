@@ -60,7 +60,7 @@ char_to_phoneme = {
 
 
 def record_audio(child_name, character, amount_to_do=25):
-    output_dir = os.path.join("data", child_name, character)
+    output_dir = os.path.join("recordings", child_name, character)
     os.makedirs(output_dir, exist_ok=True)
 
     phoneme_info = char_to_phoneme.get(character)
