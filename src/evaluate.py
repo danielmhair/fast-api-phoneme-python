@@ -1,95 +1,120 @@
 import os
-import csv
 import requests
-import Levenshtein
 from collections import defaultdict
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-API_URL = "http://localhost:8000/predict-phonemes"
-AUDIO_ROOT = "recordings"
-MAX_EDIT_DISTANCE = 0
-CSV_OUTPUT = "evaluation_results.csv"
-CONFUSION_MATRIX_IMAGE = "confusion_matrix.png"
+from torch import flatten
+import json
+# Config
+model_url = "http://localhost:8000/predict-phonemes"
+dataset_dir = "recordings_t_loud"  # Top-level directory: recordings/child_name/character/*.wav
 
-phoneme_results = defaultdict(lambda: {"total": 0, "correct": 0, "mistakes": []})
-confusion_matrix_data = defaultdict(lambda: defaultdict(int))
+# Character to expected phoneme map (example subset — expand as needed)
+char_to_phoneme = {
+    "a": "æ", "b": "b", "c": "k", "d": "d", "e": "ɛ", "f": "f",
+    "g": "g", "h": "h", "i": "ɪ", "j": "dʒ", "k": "k", "l": "l",
+    "m": "m", "n": "n", "o": "ɒ", "p": "p", "q": "k", "r": "r",
+    "s": "s", "t": "t", "u": "ʌ", "v": "v", "w": "w", "x": "ks",
+    "y": "j", "z": "z", "ch": "tʃ", "sh": "ʃ", "th": "θ", "dh": "ð", "ng": "ŋ"
+}
 
-def get_prediction(file_path):
-    with open(file_path, "rb") as audio_file:
-        response = requests.post(API_URL, files={"audio": audio_file})
-        if response.status_code == 200:
-            return response.json().get("phonemes", "").strip()
-        return None
+# Phoneme similarity groups
+phoneme_similarity_groups = [
+    {"tʃ", "dʒ"}, {"θ", "ð"}, {"s", "z"}, {"ʃ", "ʒ"},
+    {"b", "p"}, {"d", "t"}, {"g", "k"}, {"v", "f"},
+    {"n", "ŋ"}, {"æ", "a", "ɑ", "ʌ"}, {"e", "ɛ"}, {"i", "ɪ"}, {"u", "ʊ"},
+    {"r", "ɹ"}, {"l", "ɫ"}
+]
 
-def evaluate():
+# Build similarity lookup
+phoneme_to_group = {}
+for group in phoneme_similarity_groups:
+    for phoneme in group:
+        phoneme_to_group[phoneme] = group
+
+def are_similar(p1: str, p2: str) -> bool:
+    if (not p1 and p2) or (not p2 and p1):
+        return False
+    if p1 == p2:
+        return True
+    # if 'tʃi' then 'tʃ' are good, so return true
+    if p2 in p1 or p1 in p2:
+        return True
+    return phoneme_to_group.get(p1) == phoneme_to_group.get(p2)
+
+def evaluate_accuracy():
     total = 0
-    correct = 0
-    csv_rows = []
+    errors = defaultdict(list)
+    similar_phonemes = defaultdict(list)
+    exact_phonemes = defaultdict(list)
 
-    for phoneme in os.listdir(AUDIO_ROOT):
-        phoneme_dir = os.path.join(AUDIO_ROOT, phoneme)
-        if not os.path.isdir(phoneme_dir):
+    for child in os.listdir(dataset_dir):
+        child_path = os.path.join(dataset_dir, child)
+        if not os.path.isdir(child_path):
             continue
 
-        for child in os.listdir(phoneme_dir):
-            child_dir = os.path.join(phoneme_dir, child)
-            if not os.path.isdir(child_dir):
+        for character in os.listdir(child_path):
+            character_path = os.path.join(child_path, character)
+            expected_phoneme = char_to_phoneme.get(character.lower())
+
+            if not expected_phoneme:
+                print(f"[!] Skipping unknown character: {character}")
                 continue
 
-            for filename in os.listdir(child_dir):
-                if not filename.endswith(".wav"):
+            total_files = len(os.listdir(character_path))
+            count = 1
+            for file in os.listdir(character_path):
+                if not file.endswith(".wav"):
                     continue
 
-                file_path = os.path.join(child_dir, filename)
-                prediction = get_prediction(file_path)
-
-                phoneme_results[phoneme]["total"] += 1
+                if '_th_' not in file:
+                    continue
                 total += 1
+                file_path = os.path.join(character_path, file)
 
-                row = {
-                    "expected": phoneme,
-                    "predicted": prediction or "empty",
-                    "filename": filename,
-                    "correct": False
-                }
+                print(f"Processing {file_path} ({count} of {total_files})...")
+                with open(file_path, "rb") as f:
+                    try:
+                        response = requests.post(model_url, files={"audio": f})
+                        response.raise_for_status()
+                        actual_phoneme = response.json().get("phonemes", "").strip()
+                    except Exception as e:
+                        print(f"[!] Error processing {file_path}: {e}")
+                        continue
 
-                confusion_matrix_data[phoneme][prediction or "empty"] += 1
-
-                if prediction and Levenshtein.distance(prediction, phoneme) <= MAX_EDIT_DISTANCE:
-                    phoneme_results[phoneme]["correct"] += 1
-                    correct += 1
-                    row["correct"] = True
+                if actual_phoneme == expected_phoneme:
+                    exact_phonemes[expected_phoneme].append((file_path, actual_phoneme))
+                elif are_similar(actual_phoneme, expected_phoneme):
+                    similar_phonemes[expected_phoneme].append((file_path, actual_phoneme))
                 else:
-                    phoneme_results[phoneme]["mistakes"].append((filename, prediction))
+                    errors[expected_phoneme].append((file_path, actual_phoneme))
+                count += 1
+    
+    print(f"\nTotal files: {total}")
+    # Get set of all phonemes in the exact/similar/error maps
+    all_phonemes = set(exact_phonemes.keys()).union(similar_phonemes.keys()).union(errors.keys())
+    for phoneme in all_phonemes:
+        exact_count = len(exact_phonemes.get(phoneme, []))
+        similar_count = len(similar_phonemes.get(phoneme, []))
+        mismatches_count = len(errors.get(phoneme, []))
+        print(f"=== Phoneme '{phoneme}' ===")
+        print(f"Exact: {exact_count}")
+        print(f"Similar: {similar_count}")
+        print(f"Mismatches: {mismatches_count}")
+        print(f"Accuracy: {(exact_count + similar_count)/total:.2%}\n")
 
-                csv_rows.append(row)
+        print("== Mismatches ==")
+        for file_path, actual_phoneme in errors.get(phoneme, []):
+            print(f"  - {file_path} => '{actual_phoneme}'")
+    # combine exact and similar phonemes and errors into one list and make a dictionary with file_path as key and tuple of (expected_phoneme, 'similar'|'mismatch'|'exact') as value in one line
+    phoneme_results = {
+        file_path: (expected_phoneme, 'exact' if file_path in flatten(exact_phonemes.values()) else 'similar' if file_path in flatten(similar_phonemes.values()) else 'mismatch')
+        for expected_phoneme, files in {**exact_phonemes, **similar_phonemes, **errors}.items()
+        for file_path, _ in files
+    }
+    # Save phoneme_results for saving it for later use as a json file
+    with open("phoneme_results.json", "w") as f:
+        json.dump(phoneme_results, f, indent=4)
+    print("\nPhoneme results saved to phoneme_results.json")
 
-    # Write CSV
-    with open(CSV_OUTPUT, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=["filename", "expected", "predicted", "correct"])
-        writer.writeheader()
-        writer.writerows(csv_rows)
-
-    # Print accuracy
-    for phoneme, stats in phoneme_results.items():
-        acc = stats["correct"] / stats["total"] * 100 if stats["total"] > 0 else 0
-        print(f"Phoneme '{phoneme}': {stats['correct']}/{stats['total']} correct ({acc:.2f}%)")
-
-    overall = correct / total * 100 if total > 0 else 0
-    print(f"\n✅ Overall accuracy: {correct}/{total} ({overall:.2f}%)")
-
-    # Create and save confusion matrix
-    df = pd.DataFrame(confusion_matrix_data).fillna(0).astype(int).T
-    plt.figure(figsize=(16, 12))
-    sns.heatmap(df, annot=True, fmt="d", cmap="Blues")
-    plt.title("Phoneme Confusion Matrix")
-    plt.ylabel("Expected")
-    plt.xlabel("Predicted")
-    plt.tight_layout()
-    plt.savefig(CONFUSION_MATRIX_IMAGE)
-    print(f"\n📄 CSV saved to {CSV_OUTPUT}")
-    print(f"🖼️  Confusion matrix image saved to {CONFUSION_MATRIX_IMAGE}")
-
-evaluate()
+if __name__ == "__main__":
+    evaluate_accuracy()
