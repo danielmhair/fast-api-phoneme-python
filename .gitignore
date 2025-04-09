@@ -9,3 +9,4 @@ mfa_env
 recordings*
 multi_phoneme
 src/models
+wav2vec2*

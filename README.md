@@ -44,5 +44,6 @@ To run the project, you can use the following commands:
   ```
 
 - Run in 2 terminals
-  - cd src && uvicorn app:app --reload
+  - cd src2 && uvicorn app:app --reload
+  - cd src && uvicorn phoneme_api:app --reload
   - python main.py [name] [character_sound] [amount_of_tries]

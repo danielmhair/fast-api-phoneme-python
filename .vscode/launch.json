@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Uvicorn",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "phoneme_api:app",
+                "--reload"
+            ],
+            "cwd": "${workspaceFolder}/src",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "jinja": true
+        }
+          
+    ]
+  }
