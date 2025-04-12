@@ -28,9 +28,9 @@ base_model = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-base")
 base_model.eval()
 
 # === Benchmark runner ===
-def benchmark(model_instance, label="Base", use_padding=True, warmup=3, runs=10):
+def benchmark(model_instance, label="Base", use_padding=True, save=False, warmup=3, runs=10):
     print(f"\n🧪 Benchmark: {label}")
-    inputs = processor(audio, sampling_rate=16000, return_tensors="pt", padding=use_padding)
+    inputs = processor(audio, sampling_rate=16000, return_tensors="pt", padding=use_padding) # type: ignore
     model_instance.eval()
 
     # Warmup
@@ -46,22 +46,24 @@ def benchmark(model_instance, label="Base", use_padding=True, warmup=3, runs=10)
     end = time.time()
     avg_time = (end - start) / runs
     print(f"⏱️ Average Inference Time: {avg_time:.4f} seconds")
+    if save:
+        print("🔒 Saving traced model...")
+        model_instance.save("wav2vec2_traced_mean.pt")
 
-# === Main ===
-if __name__ == "__main__":
+def benchmark_and_save():
     # Base model benchmarks
     benchmark(base_model, "Base Model (with padding)", use_padding=True)
     benchmark(base_model, "Base Model (no padding)", use_padding=False)
 
     # TorchScript benchmark using wrapped model
+    wrapped_model = Wav2Vec2EmbeddingWrapper(base_model)
     try:
-        wrapped_model = Wav2Vec2EmbeddingWrapper(base_model)
-        example_input = processor(audio, sampling_rate=16000, return_tensors="pt")["input_values"]
+        example_input = processor(audio, sampling_rate=16000, return_tensors="pt")["input_values"] # type: ignore
         traced_model = torch.jit.trace(wrapped_model, example_input)
-        benchmark(traced_model, "TorchScript (mean pooled)", use_padding=False)
-        traced_model.save("wav2vec2_traced_mean.pt")
+        benchmark(traced_model, "TorchScript (mean pooled)", use_padding=False, save=True)
     except Exception as e:
         print(f"⚠️ TorchScript failed: {e}")
+        raise e
 
     # Torch Compile benchmark
     try:
@@ -69,4 +71,9 @@ if __name__ == "__main__":
         benchmark(compiled_model, "Torch Compile (mean pooled)", use_padding=False)
     except Exception as e:
         print(f"⚠️ Torch Compile failed: {e}")
+        raise e
+
+# === Main ===
+if __name__ == "__main__":
+    benchmark_and_save()
 

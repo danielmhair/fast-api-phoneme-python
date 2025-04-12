@@ -47,7 +47,7 @@ def extract_embedding(audio, processor, model):
     embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
     return embedding
 
-def main():
+def main_test_with_voice():
     print("Interactive Phoneme Testing with Processing")
     print("Press Enter to record a sound, or Ctrl+C to exit.")
     
@@ -91,4 +91,5 @@ def main():
         print("-" * 40)
 
 if __name__ == "__main__":
-    main()
+    main_test_with_voice()
+

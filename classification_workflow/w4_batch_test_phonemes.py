@@ -20,7 +20,7 @@ def extract_embedding(audio, processor, model):
     embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
     return embedding
 
-def main():        
+def batch_test_phonemes():        
     folder_path = Path("organized_recordings")
     if not folder_path.exists():
         print(f"Folder {folder_path} does not exist.")
@@ -70,4 +70,5 @@ def main():
         print("-" * 40)
     
 if __name__ == "__main__":
-    main()
+    batch_test_phonemes()
+
