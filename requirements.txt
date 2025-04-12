@@ -19,3 +19,31 @@ pydub
 openai-whisper
 
 # Then do: pip install torch --extra-index-url https://download.pytorch.org/whl/cu118
+
+########
+# conda create -n mfa python=3.9
+# conda activate mfa
+# pip install --upgrade pip setuptools wheel
+# conda install mamba -n base -c conda-forge
+# mamba create -n aligner python=3.9
+# conda activate aligner
+# mamba install -c conda-forge montreal-forced-aligner
+# mfa version
+# mfa model download acoustic english_us_arpa
+# mfa model download dictionary english_us_arpa
+# mfa align \
+#   data/ogi_kids/corpus \
+#   english_us_arpa \
+#   english_us_arpa \
+#   data/ogi_kids/aligned_phonemes \
+#   --single_speaker
+
+montreal-forced-aligner
+praat-parselmouth
+soundfile
+torch
+numpy
+transformers
+scikit-learn
+sounddevice
+librosa

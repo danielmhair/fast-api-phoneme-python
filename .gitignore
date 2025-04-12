@@ -6,6 +6,9 @@ recorded_audio.wav
 temp_audio.wav
 .venv
 mfa_env
-recordings*
+*recordings*
 multi_phoneme
 src/models
+wav2vec2*
+phoneme_embeddings
+data
