@@ -38,6 +38,10 @@ def process_audio(audio):
         return None
     return audio
 
+@app.post("/predict-phonemes-path/{file_path}")
+async def predict_phonemes_path(file_path: str):
+    return ""
+
 @app.post("/predict-phoneme-path/{file_path}")
 async def predict_phoneme_path(file_path: str):
     base_dir = "../../../Saved/BouncedWavFiles"

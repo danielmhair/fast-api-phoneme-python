@@ -13,3 +13,4 @@ src/models
 **/wav2vec2-finetuned*
 phoneme_embeddings
 data
+src/wav2vec2_traced_mean.pt
